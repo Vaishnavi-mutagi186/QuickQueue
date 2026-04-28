@@ -99,6 +99,9 @@ button:hover {
 
 <div class="container">
 
+<!-- 🔊 AUDIO FILE -->
+<audio id="alertSound" src="{{ url_for('static', filename='sounds/alert.mp3') }}"></audio>
+
 <h1>🚀 QuickQueue</h1>
 
 <!-- FORM -->
@@ -122,9 +125,7 @@ Priority (Elderly / Emergency)
 <button type="submit">Get Token</button>
 </form>
 
-<!-- VOICE BUTTON -->
 <button class="voice-btn" onclick="startVoice()">🎤 Speak</button>
-
 </div>
 
 <!-- QUEUE DISPLAY -->
@@ -163,9 +164,13 @@ Priority (Elderly / Emergency)
 
 </div>
 
-<!-- 🔔 NOTIFICATION SCRIPT -->
+<!-- 🔔 NOTIFICATION + SOUND SCRIPT -->
 <script>
 let notified = false;
+
+function playAlertSound() {
+    document.getElementById("alertSound").play();
+}
 
 function checkNotification() {
     let tokens = document.querySelectorAll(".token");
@@ -179,6 +184,7 @@ function checkNotification() {
             let tokenNumber = parseInt(match[1]);
 
             if(tokenNumber === 1 && !notified) {
+                playAlertSound(); // 🔊 SOUND
                 alert("🔔 Your turn is near! Please be ready.");
                 notified = true;
             }
