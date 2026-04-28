@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Your Token - QuickQueue</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #0f172a, #020617);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* CARD */
+.card {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(15px);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    width: 350px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+/* TITLE */
+h1 {
+    font-size: 26px;
+    margin-bottom: 10px;
+    color: #38bdf8;
+}
+
+/* TOKEN NUMBER */
+.token {
+    font-size: 60px;
+    font-weight: bold;
+    margin: 20px 0;
+    color: #a78bfa;
+}
+
+/* DETAILS */
+.info {
+    margin: 10px 0;
+    font-size: 16px;
+}
+
+/* PRIORITY BADGE */
+.priority {
+    color: #facc15;
+    font-weight: bold;
+}
+
+/* BUTTON */
+button {
+    margin-top: 20px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(90deg, #38bdf8, #6366f1);
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+}
+
+/* ANIMATION */
+.card:hover {
+    transform: scale(1.03);
+    transition: 0.3s;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<h1>🎟 Your Token</h1>
+
+<div class="token">
+    {{ user.token }}
+</div>
+
+<div class="info">
+    👤 {{ user.name }}
+</div>
+
+<div class="info">
+    🏢 {{ user.service }}
+</div>
+
+<div class="info">
+    📍 {{ user.location }}
+</div>
+
+{% if user.priority %}
+<div class="info priority">
+    ⚡ PRIORITY ACCESS
+</div>
+{% endif %}
+
+<div class="info">
+    ⏳ Joined at: {{ user.time_joined }}
+</div>
+
+<button onclick="window.location.href='/'">
+    Back to Home
+</button>
+
+</div>
+
+</body>
+</html>
