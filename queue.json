@@ -1,0 +1,27 @@
+{
+    "services": {
+        "Hospital": [
+            {
+                "name": "Srilakshmi M",
+                "service": "Hospital",
+                "token": 2,
+                "priority": true,
+                "time_joined": "15:08:53"
+            },
+            {
+                "name": "Varsha K",
+                "service": "Hospital",
+                "token": 3,
+                "priority": true,
+                "time_joined": "15:09:38"
+            },
+            {
+                "name": "Sahana H",
+                "service": "Hospital",
+                "token": 4,
+                "priority": true,
+                "time_joined": "15:09:58"
+            }
+        ]
+    }
+}
