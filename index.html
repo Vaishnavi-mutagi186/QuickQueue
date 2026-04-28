@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuickQueue</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    margin: 0;
+}
+
+.container {
+    max-width: 900px;
+    margin: auto;
+    padding: 15px;
+}
+
+h1 {
+    text-align: center;
+    color: white;
+}
+
+.card {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+button {
+    background: #4facfe;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+}
+
+button:hover {
+    background: #00c6ff;
+}
+
+.voice-btn {
+    background: #ff9800;
+    margin-top: 5px;
+}
+
+.queue-card {
+    background: white;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.token {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+}
+
+.priority {
+    color: red;
+    font-weight: bold;
+}
+
+.badge {
+    background: #4facfe;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 12px;
+}
+
+@media (max-width: 600px) {
+    h1 { font-size: 20px; }
+    .token { flex-direction: column; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🚀 QuickQueue</h1>
+
+<!-- FORM -->
+<div class="card">
+<h2>🎟 Join Queue</h2>
+
+<form method="POST">
+<input type="text" id="nameInput" name="name" placeholder="Enter your name" required>
+
+<select name="service" id="serviceSelect">
+<option>Hospital</option>
+<option>Bank</option>
+<option>Government Office</option>
+</select>
+
+<label>
+<input type="checkbox" name="priority">
+Priority (Elderly / Emergency)
+</label>
+
+<button type="submit">Get Token</button>
+</form>
+
+<!-- VOICE BUTTON -->
+<button class="voice-btn" onclick="startVoice()">🎤 Speak</button>
+
+</div>
+
+<!-- QUEUE DISPLAY -->
+<h2 style="color:white;">📊 Live Queues</h2>
+
+{% for service, queue in services.items() %}
+<div class="queue-card">
+
+<h3>{{ service }}</h3>
+
+{% if queue %}
+    {% for user in queue %}
+    <div class="token">
+        <span>
+        🎟 {{ user.token }} - {{ user.name }}
+        {% if user.priority %}
+        <span class="priority">⚡ PRIORITY</span>
+        {% endif %}
+        </span>
+
+        <span class="badge">
+        ⏱ {{ user.waiting }} min
+        </span>
+    </div>
+    {% endfor %}
+{% else %}
+    <p>No users in queue</p>
+{% endif %}
+
+<a href="/serve/{{ service }}">
+<button style="background:green;">Serve Next</button>
+</a>
+
+</div>
+{% endfor %}
+
+</div>
+
+<!-- 🔔 NOTIFICATION SCRIPT -->
+<script>
+let notified = false;
+
+function checkNotification() {
+    let tokens = document.querySelectorAll(".token");
+
+    if(tokens.length > 0) {
+        let first = tokens[0].innerText;
+
+        let match = first.match(/🎟\s*(\d+)/);
+
+        if(match) {
+            let tokenNumber = parseInt(match[1]);
+
+            if(tokenNumber === 1 && !notified) {
+                alert("🔔 Your turn is near! Please be ready.");
+                notified = true;
+            }
+        }
+    }
+}
+
+setInterval(checkNotification, 8000);
+</script>
+
+<!-- 🎤 VOICE SCRIPT -->
+<script>
+function startVoice() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        let speech = event.results[0][0].transcript.toLowerCase();
+
+        document.getElementById("nameInput").value = speech;
+
+        if (speech.includes("hospital")) {
+            document.getElementById("serviceSelect").value = "Hospital";
+        } 
+        else if (speech.includes("bank")) {
+            document.getElementById("serviceSelect").value = "Bank";
+        } 
+        else if (speech.includes("government") || speech.includes("office")) {
+            document.getElementById("serviceSelect").value = "Government Office";
+        }
+
+        alert("🎤 Detected: " + speech);
+    }
+}
+</script>
+
+</body>
+</html>

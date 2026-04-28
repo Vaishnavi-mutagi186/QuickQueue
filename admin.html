@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QuickQueue Admin Control Center</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: #0b1220;
+    color: white;
+}
+
+/* HEADER */
+header {
+    padding: 20px;
+    text-align: center;
+    background: linear-gradient(90deg, #1e3a8a, #0ea5e9);
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* STATS BAR */
+.stats {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px;
+}
+
+.stat-box {
+    background: #111827;
+    padding: 15px;
+    border-radius: 12px;
+    width: 20%;
+    text-align: center;
+    box-shadow: 0 0 10px rgba(14,165,233,0.3);
+}
+
+.stat-box h2 {
+    margin: 5px;
+    color: #38bdf8;
+}
+
+/* BUTTONS */
+.top-actions {
+    text-align: center;
+    margin: 10px;
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    cursor: pointer;
+    border-radius: 8px;
+    margin: 5px;
+    font-weight: bold;
+}
+
+.reset {
+    background: #ef4444;
+    color: white;
+}
+
+.live {
+    background: #22c55e;
+    color: white;
+}
+
+/* GRID */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 15px;
+    padding: 20px;
+}
+
+/* CARD */
+.card {
+    background: #111827;
+    border-radius: 15px;
+    padding: 15px;
+    border-left: 5px solid #38bdf8;
+    transition: 0.3s;
+}
+
+.card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(56,189,248,0.4);
+}
+
+.badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.waiting { background: orange; }
+.called { background: #facc15; color: black; }
+.served { background: #22c55e; }
+
+.actions {
+    margin-top: 10px;
+}
+
+.call {
+    background: #f59e0b;
+}
+
+.serve {
+    background: #22c55e;
+}
+
+.delete {
+    background: #ef4444;
+    color: white;
+}
+
+.small {
+    font-size: 13px;
+    opacity: 0.8;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+🧑‍💼 QUICKQUEUE CONTROL CENTER
+</header>
+
+<!-- STATS -->
+<div class="stats">
+    <div class="stat-box">
+        <h2>{{ users|length }}</h2>
+        <p>Total Users</p>
+    </div>
+
+    <div class="stat-box">
+        <h2>{{ users|selectattr("status","equalto","waiting")|list|length }}</h2>
+        <p>Waiting</p>
+    </div>
+
+    <div class="stat-box">
+        <h2>{{ users|selectattr("priority","equalto",true)|list|length }}</h2>
+        <p>Priority</p>
+    </div>
+
+    <div class="stat-box">
+        <h2>LIVE</h2>
+        <p>Status</p>
+    </div>
+</div>
+
+<!-- ACTIONS -->
+<div class="top-actions">
+    <a href="/reset">
+        <button class="reset">RESET SYSTEM</button>
+    </a>
+</div>
+
+<!-- USERS GRID -->
+<div class="grid">
+
+{% for user in users %}
+
+<div class="card">
+
+    <h3>🎟 Token #{{ user.token }}</h3>
+    <p>👤 {{ user.name }}</p>
+    <p class="small">🏥 {{ user.service }}</p>
+
+    <p>
+        Status:
+        <span class="badge {{ user.status }}">
+            {{ user.status }}
+        </span>
+    </p>
+
+    <p>⚡ Priority: {{ user.priority }}</p>
+    <p class="small">⏱ Joined: {{ user.time_joined }}</p>
+
+    <div class="actions">
+
+        <a href="/call/{{ user.service }}">
+            <button class="call">CALL</button>
+        </a>
+
+        <a href="/serve/{{ user.service }}">
+            <button class="serve">SERVE</button>
+        </a>
+
+    </div>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+</body>
+</html>
