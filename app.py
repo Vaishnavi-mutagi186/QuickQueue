@@ -1,111 +1,161 @@
-from flask import Flask, render_template, request, redirect
-import json
-import os
+from flask import Flask, render_template, request, redirect, jsonify
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+
+# ✅ AI MODEL IMPORT
+from ml_model import predict_disease
 
 app = Flask(__name__)
 
-DATA_FILE = "queue.json"
+# -------------------- DATABASE SETUP --------------------
 
-# -------------------- DATA HANDLING --------------------
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///queue.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        return {"services": {}}
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
+db = SQLAlchemy(app)
 
-def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+# -------------------- MODEL --------------------
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100))
+    service = db.Column(db.String(100))
+    token = db.Column(db.Integer)
+    priority = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default="waiting")
+    time_joined = db.Column(db.String(20))
+    waiting = db.Column(db.Integer)
+    people_ahead = db.Column(db.Integer)
+
+    # AI FIELDS
+    symptoms = db.Column(db.String(200))
+    recommendation = db.Column(db.String(200))
+
+# -------------------- CREATE DATABASE --------------------
+
+with app.app_context():
+    db.create_all()
 
 # -------------------- CORE LOGIC --------------------
 
-def get_next_token(queue):
-    if not queue:
-        return 1
-    return max(user["token"] for user in queue) + 1
+def get_next_token(service):
+    last_user = User.query.filter_by(service=service).order_by(User.token.desc()).first()
+    return 1 if not last_user else last_user.token + 1
 
-def sort_queue(queue):
-    # Priority first, then by token (fair ordering)
-    return sorted(queue, key=lambda x: (not x["priority"], x["token"]))
+def sort_queue(users):
+    return sorted(users, key=lambda x: (not x.priority, x.token))
 
-def calculate_wait_time(queue):
-    BASE_TIME = 5  # minutes per person
+def calculate_wait_time(users):
+    BASE_TIME = 4
 
-    for i, user in enumerate(queue):
-        multiplier = 0.5 if user["priority"] else 1
-        user["waiting"] = int(i * BASE_TIME * multiplier)
-        user["people_ahead"] = i
+    for i, user in enumerate(users):
+        multiplier = 0.4 if user.priority else 1
+        user.waiting = int(i * BASE_TIME * multiplier)
+        user.people_ahead = i
+    return users
 
-    return queue
-
-# -------------------- ROUTES --------------------
+# -------------------- MAIN PAGE --------------------
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    data = load_data()
 
     if request.method == "POST":
         name = request.form["name"]
         service = request.form["service"]
         priority = request.form.get("priority") == "on"
 
-        if service not in data["services"]:
-            data["services"][service] = []
+        # ✅ SYMPTOMS INPUT
+        symptoms = request.form.get("symptoms", "")
 
-        queue = data["services"][service]
+        # 🤖 AI PREDICTION
+        result = predict_disease(symptoms)
+        recommendation = result["disease"]
 
-        token_number = get_next_token(queue)
+        token_number = get_next_token(service)
 
-        new_user = {
-            "name": name,
-            "service": service,
-            "token": token_number,
-            "priority": priority,
-            "time_joined": datetime.now().strftime("%H:%M:%S")
-        }
+        new_user = User(
+            name=name,
+            service=service,
+            token=token_number,
+            priority=priority,
+            status="waiting",
+            time_joined=datetime.now().strftime("%H:%M:%S"),
 
-        queue.append(new_user)
+            symptoms=symptoms,
+            recommendation=recommendation
+        )
 
-        # Smart sorting
-        queue = sort_queue(queue)
-
-        data["services"][service] = queue
-        save_data(data)
+        db.session.add(new_user)
+        db.session.commit()
 
         return redirect("/")
 
-    # Process all queues
-    for service in data["services"]:
-        queue = data["services"][service]
-        queue = sort_queue(queue)
-        queue = calculate_wait_time(queue)
-        data["services"][service] = queue
+    services = db.session.query(User.service).distinct()
 
-    return render_template("index.html", services=data["services"])
+    data = {}
+    for s in services:
+        users = User.query.filter_by(service=s.service).all()
+        users = sort_queue(users)
+        users = calculate_wait_time(users)
+        data[s.service] = users
 
-# -------------------- ADMIN --------------------
+    return render_template("index.html", services=data)
+
+# -------------------- CALL NEXT USER --------------------
+
+@app.route("/call/<service>")
+def call_next(service):
+    user = User.query.filter_by(service=service, status="waiting").first()
+
+    if user:
+        user.status = "called"
+        db.session.commit()
+
+    return redirect("/")
+
+# -------------------- SERVE USER --------------------
 
 @app.route("/serve/<service>")
 def serve(service):
-    data = load_data()
+    user = User.query.filter_by(service=service).order_by(User.token).first()
 
-    if service in data["services"] and data["services"][service]:
-        served = data["services"][service].pop(0)
-        print(f"Served: {served['name']} (Token {served['token']})")
+    if user:
+        user.status = "served"
+        db.session.delete(user)
+        db.session.commit()
 
-    save_data(data)
     return redirect("/")
 
-# -------------------- RESET (BONUS) --------------------
+# -------------------- RESET SYSTEM --------------------
 
 @app.route("/reset")
 def reset():
-    save_data({"services": {}})
+    User.query.delete()
+    db.session.commit()
     return redirect("/")
 
-# -------------------- RUN --------------------
+# -------------------- STATS API --------------------
+
+@app.route("/stats/<service>")
+def stats(service):
+    users = User.query.filter_by(service=service).all()
+
+    return jsonify({
+        "total": len(users),
+        "waiting": sum(1 for u in users if u.status == "waiting"),
+        "called": sum(1 for u in users if u.status == "called"),
+        "served": sum(1 for u in users if u.status == "served"),
+        "priority": sum(1 for u in users if u.priority)
+    })
+
+# -------------------- ADMIN PAGE --------------------
+
+@app.route("/admin")
+def admin():
+    users = User.query.order_by(User.token).all()
+    return render_template("admin.html", users=users)
+
+# -------------------- RUN APP --------------------
 
 if __name__ == "__main__":
     app.run(debug=True)
