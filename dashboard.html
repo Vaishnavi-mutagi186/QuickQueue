@@ -3,26 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>QuickQueue Pulse Command Center</title>
+<title>QuickQueue Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <style>
 
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-font-family:'Segoe UI',sans-serif;
-}
-
 body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
 background:radial-gradient(circle at top,#0f172a,#020617);
 color:white;
 padding:30px;
 }
 
-/* HEADER */
 h1{
 font-size:32px;
 background:linear-gradient(90deg,#38bdf8,#a78bfa,#22c55e);
@@ -35,8 +30,8 @@ color:#94a3b8;
 margin-bottom:25px;
 }
 
-/* KPI GRID */
-.dashboard{
+/* KPI */
+.grid{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
 gap:20px;
@@ -46,79 +41,47 @@ margin-bottom:30px;
 .card{
 background:rgba(255,255,255,0.06);
 backdrop-filter:blur(15px);
+padding:20px;
+border-radius:16px;
 border:1px solid rgba(255,255,255,0.1);
-padding:22px;
-border-radius:18px;
-transition:0.3s;
-}
-
-.card:hover{
-transform:translateY(-5px);
-box-shadow:0 10px 30px rgba(56,189,248,0.2);
 }
 
 .metric{
-font-size:34px;
+font-size:30px;
 font-weight:bold;
+color:#38bdf8;
 margin-top:10px;
-color:#38bdf8;
 }
 
-/* SECTION */
-.section{
-background:rgba(255,255,255,0.05);
-padding:25px;
-border-radius:18px;
-margin-bottom:25px;
-border:1px solid rgba(255,255,255,0.1);
-backdrop-filter:blur(10px);
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-margin-top:15px;
-}
-
-th,td{
-padding:12px;
-border-bottom:1px solid rgba(255,255,255,0.1);
-}
-
-th{
-color:#38bdf8;
-text-align:left;
-}
-
-.priority{
-color:#fbbf24;
-font-weight:bold;
-}
-
-/* GRID */
-.grid{
+/* LAYOUT */
+.layout{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(400px,1fr));
 gap:20px;
 }
 
-/* ALERT */
+.section{
+background:rgba(255,255,255,0.05);
+padding:20px;
+border-radius:16px;
+border:1px solid rgba(255,255,255,0.1);
+}
+
+/* ALERTS */
 .alert{
 background:rgba(251,191,36,0.1);
 border-left:4px solid #fbbf24;
-padding:12px;
+padding:10px;
 margin-top:10px;
-border-radius:10px;
+border-radius:8px;
 }
 
-/* STATUS PULSE */
 .pulse{
-display:inline-block;
 width:10px;
 height:10px;
 border-radius:50%;
 background:#22c55e;
-box-shadow:0 0 10px #22c55e;
+display:inline-block;
 animation:pulse 1.5s infinite;
 }
 
@@ -128,168 +91,139 @@ animation:pulse 1.5s infinite;
 100%{transform:scale(1);opacity:1;}
 }
 
-footer{
-text-align:center;
-margin-top:30px;
-color:#64748b;
-}
-
 </style>
 </head>
 
 <body>
 
-<h1>🚀 QuickQueue Command Center</h1>
-<p class="subtitle">Real-time Intelligent Queue Analytics System</p>
+<h1>🚀 QuickQueue Dashboard</h1>
+<p class="subtitle">Real-time Queue Intelligence System</p>
 
-<!-- KPI -->
-<div class="dashboard">
+<!-- KPI CARDS -->
+<div class="grid">
 
 <div class="card">
 <div>Currently Serving <span class="pulse"></span></div>
-<div class="metric">A27</div>
+<div class="metric" id="serving">A27</div>
 </div>
 
 <div class="card">
 <div>Waiting Users</div>
-<div class="metric" id="waiting">18</div>
+<div class="metric" id="waiting">0</div>
 </div>
 
 <div class="card">
-<div>Priority Queue</div>
-<div class="metric">4</div>
+<div>Priority Users</div>
+<div class="metric" id="priority">0</div>
 </div>
 
 <div class="card">
-<div>Avg Wait Time</div>
-<div class="metric">12m</div>
+<div>Served</div>
+<div class="metric" id="served">0</div>
 </div>
 
 </div>
 
-<!-- TABLE -->
-<div class="section">
-
-<h2>Live Queue Monitor</h2>
-
-<table>
-<tr>
-<th>Token</th>
-<th>User</th>
-<th>Service</th>
-<th>Status</th>
-</tr>
-
-<tr>
-<td>A28</td>
-<td>Rahul</td>
-<td>Hospital</td>
-<td>Waiting</td>
-</tr>
-
-<tr>
-<td>P03</td>
-<td>Anita</td>
-<td>Bank</td>
-<td class="priority">Priority</td>
-</tr>
-
-<tr>
-<td>A29</td>
-<td>Kiran</td>
-<td>Gov Office</td>
-<td>Next</td>
-</tr>
-
-</table>
-
-</div>
-
-<!-- CHARTS -->
-<div class="grid">
+<!-- CHARTS + INSIGHTS -->
+<div class="layout">
 
 <div class="section">
-<h2>Rush Hour Flow</h2>
+<h3>📊 Queue Load Analysis</h3>
 <canvas id="chart1"></canvas>
 </div>
 
 <div class="section">
-<h2>Queue Split</h2>
+<h3>📈 Priority vs Regular</h3>
 <canvas id="chart2"></canvas>
 </div>
 
-</div>
-
-<div class="grid">
-
 <div class="section">
-<h2>Wait Time Trend</h2>
+<h3>📉 Wait Time Trend</h3>
 <canvas id="chart3"></canvas>
 </div>
 
 <div class="section">
-
-<h2>AI Insights Engine</h2>
-
-<p>🔥 Best Time: <b>3 PM - 5 PM</b></p>
-<p>⚡ Efficiency: <b>73%</b></p>
-<p>👥 Users Served: <b>142</b></p>
-
-<div class="alert">⚠ Priority load increasing</div>
-<div class="alert">⚠ Counter 2 congestion detected</div>
-
+<h3>🧠 AI Insights</h3>
+<div id="insights">
+<div class="alert">Waiting for live data...</div>
+</div>
 </div>
 
 </div>
-
-<footer>
-QuickQueue • Intelligent Public Service System
-</footer>
 
 <script>
 
+/* SOCKET CONNECTION */
+const socket = io();
+
+/* LIVE UPDATES */
+socket.on("update_dashboard", (data) => {
+
+document.getElementById("waiting").innerText = data.waiting;
+document.getElementById("priority").innerText = data.priority;
+document.getElementById("served").innerText = data.served;
+
+/* AI INSIGHTS */
+document.getElementById("insights").innerHTML = `
+<div class="alert">🔥 System Load: ${data.waiting > 15 ? "HIGH" : "NORMAL"}</div>
+<div class="alert">⚡ Priority Load: ${data.priority}</div>
+<div class="alert">🧠 Action: ${data.waiting > 20 ? "OPEN EXTRA COUNTER" : "OPTIMAL FLOW"}</div>
+`;
+
+});
+
 /* CHART 1 */
-new Chart(document.getElementById('chart1'),{
-type:'bar',
-data:{
-labels:['9AM','10AM','11AM','12PM','1PM','2PM'],
-datasets:[{
-data:[12,25,40,55,38,20],
-backgroundColor:'#38bdf8'
+let chart1 = new Chart(document.getElementById("chart1"), {
+type: "bar",
+data: {
+labels: ["9AM","10AM","11AM","12PM","1PM","2PM"],
+datasets: [{
+data: [10,20,35,50,30,15],
+backgroundColor: "#38bdf8"
 }]
 }
 });
 
 /* CHART 2 */
-new Chart(document.getElementById('chart2'),{
-type:'doughnut',
-data:{
-labels:['Regular','Priority'],
-datasets:[{
-data:[14,4],
-backgroundColor:['#38bdf8','#fbbf24']
+new Chart(document.getElementById("chart2"), {
+type: "doughnut",
+data: {
+labels: ["Regular","Priority"],
+datasets: [{
+data: [15,5],
+backgroundColor: ["#38bdf8","#fbbf24"]
 }]
 }
 });
 
 /* CHART 3 */
-new Chart(document.getElementById('chart3'),{
-type:'line',
-data:{
-labels:['Mon','Tue','Wed','Thu','Fri'],
-datasets:[{
-data:[18,15,12,10,11],
-borderColor:'#22c55e',
-tension:0.4
+new Chart(document.getElementById("chart3"), {
+type: "line",
+data: {
+labels: ["Mon","Tue","Wed","Thu","Fri"],
+datasets: [{
+data: [18,14,12,10,13],
+borderColor: "#22c55e",
+tension: 0.4
 }]
 }
 });
 
-/* LIVE SIMULATION */
-setInterval(()=>{
-document.getElementById("waiting").innerText =
-Math.floor(Math.random()*10 + 15);
-},4000);
+/* LIVE CHART UPDATE */
+setInterval(() => {
+
+chart1.data.datasets[0].data = [
+Math.random()*20,
+Math.random()*40,
+Math.random()*30,
+Math.random()*60,
+Math.random()*25,
+Math.random()*35
+];
+
+chart1.update();
+
+}, 4000);
 
 </script>
 

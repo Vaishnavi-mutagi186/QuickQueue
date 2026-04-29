@@ -6,6 +6,9 @@
 
 <title>Your Token - QuickQueue</title>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <style>
 body {
     margin: 0;
@@ -13,12 +16,11 @@ body {
     background: linear-gradient(135deg, #0f172a, #020617);
     color: white;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    height: 100vh;
+    padding: 30px;
 }
 
-/* CARD */
 .card {
     background: rgba(255,255,255,0.08);
     backdrop-filter: blur(15px);
@@ -27,94 +29,200 @@ body {
     text-align: center;
     width: 350px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    margin-bottom: 25px;
 }
 
-/* TITLE */
-h1 {
-    font-size: 26px;
-    margin-bottom: 10px;
-    color: #38bdf8;
-}
-
-/* TOKEN NUMBER */
 .token {
     font-size: 60px;
     font-weight: bold;
-    margin: 20px 0;
     color: #a78bfa;
 }
 
-/* DETAILS */
-.info {
-    margin: 10px 0;
-    font-size: 16px;
-}
-
-/* PRIORITY BADGE */
-.priority {
-    color: #facc15;
-    font-weight: bold;
-}
-
-/* BUTTON */
 button {
-    margin-top: 20px;
-    padding: 12px 20px;
+    margin-top: 15px;
+    padding: 10px;
+    width: 100%;
     border-radius: 10px;
     border: none;
     background: linear-gradient(90deg, #38bdf8, #6366f1);
     color: white;
     cursor: pointer;
-    font-weight: bold;
-    width: 100%;
 }
 
-/* ANIMATION */
-.card:hover {
-    transform: scale(1.03);
-    transition: 0.3s;
+#map {
+    width: 90%;
+    max-width: 700px;
+    height: 400px;
+    border-radius: 15px;
+    margin-bottom: 20px;
 }
 
+/* 🔥 Pulse animation */
+.leaflet-marker-icon {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
 </style>
 </head>
 
 <body>
 
+<!-- 🎟 TOKEN CARD -->
 <div class="card">
-
 <h1>🎟 Your Token</h1>
-
-<div class="token">
-    {{ user.token }}
-</div>
-
-<div class="info">
-    👤 {{ user.name }}
-</div>
-
-<div class="info">
-    🏢 {{ user.service }}
-</div>
-
-<div class="info">
-    📍 {{ user.location }}
-</div>
+<div class="token">{{ user.token }}</div>
+<div>👤 {{ user.name }}</div>
+<div>🏢 {{ user.service }}</div>
+<div>📍 {{ user.location }}</div>
 
 {% if user.priority %}
-<div class="info priority">
-    ⚡ PRIORITY ACCESS
-</div>
+<div style="color:gold;">⚡ PRIORITY</div>
 {% endif %}
 
-<div class="info">
-    ⏳ Joined at: {{ user.time_joined }}
+<div>⏳ {{ user.time_joined }}</div>
+
+<button onclick="window.location.href='/'">Back</button>
 </div>
 
-<button onclick="window.location.href='/'">
-    Back to Home
-</button>
+<!-- 🗺 MAP -->
+<div id="map"></div>
 
+<!-- 🧠 AI POPUP -->
+<div id="aiPopup" style="
+position: fixed;
+bottom: 20px;
+right: 20px;
+background: #111827;
+padding: 20px;
+border-radius: 15px;
+display: none;
+width: 260px;
+z-index: 999;
+box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+">
+<h3 style="color:#38bdf8;">🧠 Smart Suggestion</h3>
+<p id="hospitalName"></p>
+<p id="hospitalDistance"></p>
+<p id="hospitalETA"></p>
+<button onclick="closePopup()">Close</button>
 </div>
+
+<script>
+
+// 🧠 POPUP
+function showPopup(hospital, eta){
+    document.getElementById("aiPopup").style.display = "block";
+    document.getElementById("hospitalName").innerText = "🏥 " + hospital.name;
+    document.getElementById("hospitalDistance").innerText = "📏 " + hospital.distance_km + " km";
+    document.getElementById("hospitalETA").innerText = "⏱ ETA: " + eta + " mins";
+}
+function closePopup(){
+    document.getElementById("aiPopup").style.display = "none";
+}
+
+// ⏱ ETA (FINAL VERSION)
+function calculateETA(distance_km){
+    let avg_speed = 40;
+    let time_hours = distance_km / avg_speed;
+    return Math.round(time_hours * 60);
+}
+
+let map;
+let userMarker;
+let routeLayer;
+
+// 🚗 ROUTE
+function drawRoute(userLat, userLng, destLat, destLng){
+    fetch(`https://router.project-osrm.org/route/v1/driving/${userLng},${userLat};${destLng},${destLat}?overview=full&geometries=geojson`)
+    .then(res => res.json())
+    .then(data => {
+
+        if(routeLayer) map.removeLayer(routeLayer);
+
+        routeLayer = L.geoJSON(data.routes[0].geometry, {
+            style: { color: "cyan", weight: 5 }
+        }).addTo(map);
+    });
+}
+
+// 🔴 LIVE TRACKING
+function startTracking(){
+    navigator.geolocation.watchPosition(pos => {
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
+
+        if(!userMarker){
+            userMarker = L.marker([lat, lng]).addTo(map);
+        } else {
+            userMarker.setLatLng([lat, lng]);
+        }
+    });
+}
+
+// 📍 INIT
+let loc = "{{ user.location }}";
+
+if(loc && loc.includes(",")){
+
+    let [lat, lng] = loc.split(",").map(Number);
+
+    map = L.map('map').setView([lat, lng], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    .addTo(map);
+
+    userMarker = L.marker([lat, lng]).addTo(map)
+    .bindPopup("📍 You are here")
+    .openPopup();
+
+    startTracking();
+
+    // 🏥 FETCH HOSPITALS
+    fetch(`/nearby/${lat}/${lng}`)
+    .then(res => res.json())
+    .then(data => {
+
+        if(data.length === 0) return;
+
+        data.forEach((h, index) => {
+
+            let marker = L.circleMarker([h.lat, h.lng], {
+                color: index === 0 ? "red" : "blue",
+                radius: index === 0 ? 10 : 6
+            }).addTo(map);
+
+            marker.bindPopup(`
+                🏥 <b>${h.name}</b><br>
+                📏 ${h.distance_km} km<br>
+                ${index === 0 ? "<b style='color:lime'>⭐ BEST CHOICE</b><br>" : ""}
+                <button onclick="drawRoute(${lat}, ${lng}, ${h.lat}, ${h.lng})">
+                    Navigate 🚗
+                </button>
+            `);
+        });
+
+    });
+
+    // 🧠 AI BEST + ETA
+    fetch(`/best/${lat}/${lng}`)
+    .then(res => res.json())
+    .then(best => {
+        if(best){
+            let eta = calculateETA(best.distance_km);
+            showPopup(best, eta);
+        }
+    });
+
+}else{
+    document.getElementById("map").innerHTML = "Location not available";
+}
+
+</script>
 
 </body>
 </html>
